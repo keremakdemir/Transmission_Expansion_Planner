@@ -133,7 +133,7 @@ def TEPCost(m):
     #Power flow cost on transmission lines
     Power_flow_cost = sum(m.DummyFlow[l,t]*0.01*Hours_in_months[t] for l in m.L for t in m.T)
     #Investment cost for transmission capacity additions
-    Tr_investment_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l] for l in m.L)
+    Tr_investment_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l]/5 for l in m.L)
 
     return Gen_cost + LOL_cost + Solar_cost + Wind_cost + OffWind_cost + Hydro_cost + Power_flow_cost + Tr_investment_cost
     
@@ -216,6 +216,12 @@ def KCL(m,n,t):
     total_LOL = m.LossOfLoad[n,t]
     return total_thermal_gen + total_renewable_gen + total_LOL + mustrun_gen - total_power_flow == Demand[t,n]
 m.KCL_Cons = pyo.Constraint(m.N, m.T, rule=KCL)
+
+#Constraint to limit 5-year transmission investment cost in USD
+def TransmissionBudget(m):
+    Tr_inv_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l] for l in m.L)
+    return Tr_inv_cost <= 20*10**9
+m.TransmissionBudget_Cons = pyo.Constraint(rule=TransmissionBudget)
 
 #Calling the solver to solve the model
 TEP_results = opt.solve(m)
@@ -304,9 +310,10 @@ LineLimit_Results.insert(0, "Name", Line_Names)
 LineLimit_Results.insert(1, "Reactance", Line_Reactances)
 LineLimit_Results.insert(2, "Type", Line_Types)
 LineLimit_Results.insert(3, "Length", Line_Lengths)
-LineLimit_Results.insert(4, "Investment_Cost", Line_Costs)
+LineLimit_Results.insert(4, "Capital_Cost", Line_Costs)
 LineLimit_Results.insert(5, "Old_Capacity", Line_Initial_Limits)
 LineLimit_Results["Capacity_Addition"] = LineLimit_Results["New_Capacity"] - LineLimit_Results["Old_Capacity"]
+LineLimit_Results["Total_Investment"] = LineLimit_Results["Capital_Cost"]*LineLimit_Results["Capacity_Addition"]*LineLimit_Results["Length"]
 
 LineLimit_Results.to_csv("Outputs/TEP/New_Transmission_Data.csv", index=False)
 
