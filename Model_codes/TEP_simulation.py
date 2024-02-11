@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import pyomo.environ as pyo
 
+#Defining yearly transmission investment budget in USD
+Tr_Budget = 4*10**9
+
 #Defining the USD scaling factor to avoid numerical issues during optimization
 Scalar = 10**4
 
@@ -229,7 +232,7 @@ m.KCL_Cons = pyo.Constraint(m.N, m.T, rule=KCL)
 #Constraint to limit yearly transmission investment cost in USD
 def TransmissionBudget(m):
     Tr_inv_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l] for l in m.L)
-    return Tr_inv_cost <= 4*10**9/Scalar
+    return Tr_inv_cost <= Tr_Budget/Scalar
 m.TransmissionBudget_Cons = pyo.Constraint(rule=TransmissionBudget)
 
 #Calling the solver to solve the model
