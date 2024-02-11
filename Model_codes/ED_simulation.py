@@ -210,15 +210,15 @@ def KCL(m,n,t):
 m.KCL_Cons = pyo.Constraint(m.N, m.T, rule=KCL)
 
 #Calling the solver to solve the model
-ED_results = opt.solve(m)
+ED_results = opt.solve(m, tee=True)
 
 #Checking the solver status and if solution is feasible or not
 if (ED_results.solver.status == pyo.SolverStatus.ok) and (ED_results.solver.termination_condition == pyo.TerminationCondition.optimal):
-    print('Success! Solution is feasible.') 
+    print("\033[92mSuccess! Solution is feasible. \033[00m")
 elif (ED_results.solver.termination_condition == pyo.TerminationCondition.infeasible):
-    print('Solution is INFEASIBLE!!!') 
+    print("\033[91mSolution is INFEASIBLE!!! \033[00m")
 else:
-    print(f'Something else is not right, solver status is {ED_results.solver.status}.')
+    print(f"\033[91mSomething else is not right, solver status is {ED_results.solver.status}. \033[00m")
 
 #Creating a folder to store the results
 os.makedirs('Outputs/ED_Only', exist_ok=True)

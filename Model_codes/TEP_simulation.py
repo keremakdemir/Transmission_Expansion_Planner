@@ -3,6 +3,9 @@ import pandas as pd
 import numpy as np
 import pyomo.environ as pyo
 
+#Defining the USD scaling factor to avoid numerical issues during optimization
+scalar = 10**4
+
 #Reading all necessary datasets
 Generators_df = pd.read_csv("Inputs/data_genparams.csv", header=0)
 Fuel_Prices_df = pd.read_csv("Inputs/Fuel_prices.csv", header=0)
@@ -49,9 +52,9 @@ Thermal_Gen_Types = Thermal_Generators["typ"].values
 Thermal_Gen_Node = Thermal_Generators["node"].values
 Thermal_Gen_MaxCap = Thermal_Generators["maxcap"].values
 Thermal_Gen_HeatRate = Thermal_Generators["heat_rate"].values
-Thermal_Gen_VarOM = Thermal_Generators["var_om"].values
+Thermal_Gen_VarOM = Thermal_Generators["var_om"].values/scalar
 
-Thermal_Fuel_Prices = Fuel_Prices_df.values
+Thermal_Fuel_Prices = Fuel_Prices_df.values/scalar
 Gen_Node_Matrix = Gen_Node_Matrix_df.values
 
 Node_Names = Demand_df.columns.values
@@ -69,7 +72,7 @@ Line_Reactances = Line_Params_df["reactance"].values
 Line_Initial_Limits = Line_Params_df["limit"].values
 Line_Types = Line_Params_df["transmission_type"].values
 Line_Lengths = Line_Params_df["length_mile"].values
-Line_Costs = Line_Params_df["inv_cost_$_per_MWmile"].values
+Line_Costs = Line_Params_df["inv_cost_$_per_MWmile"].values/scalar
 
 ############################ TRANSMISSION EXPANSION MODEL ############################
 
@@ -121,17 +124,17 @@ def TEPCost(m):
     #Generation cost from dispatchable thermal generators
     Gen_cost = sum(m.ThermalGen[g,t]*((Thermal_Gen_HeatRate[g]*Thermal_Fuel_Prices[t,g])+Thermal_Gen_VarOM[g])*Hours_in_months[t] for g in m.G for t in m.T)
     #Loss of load (i.e., unserved energy cost)
-    LOL_cost = sum(m.LossOfLoad[n,t]*2000*Hours_in_months[t] for n in m.N for t in m.T)
+    LOL_cost = sum(m.LossOfLoad[n,t]*2000/scalar*Hours_in_months[t] for n in m.N for t in m.T)
     #Generation cost from solar generators
-    Solar_cost = sum(m.SolarGen[n,t]*0.01*Hours_in_months[t] for n in m.N for t in m.T)
+    Solar_cost = sum(m.SolarGen[n,t]*0.01/scalar*Hours_in_months[t] for n in m.N for t in m.T)
     #Generation cost from wind generators
-    Wind_cost = sum(m.WindGen[n,t]*0.01*Hours_in_months[t] for n in m.N for t in m.T)
+    Wind_cost = sum(m.WindGen[n,t]*0.01/scalar*Hours_in_months[t] for n in m.N for t in m.T)
     #Generation cost from offshore wind generators
-    OffWind_cost = sum(m.OffWindGen[n,t]*0.01*Hours_in_months[t] for n in m.N for t in m.T)
+    OffWind_cost = sum(m.OffWindGen[n,t]*0.01/scalar*Hours_in_months[t] for n in m.N for t in m.T)
     #Generation cost from hydro generators
-    Hydro_cost = sum(m.HydroGen[n,t]*0.01*Hours_in_months[t] for n in m.N for t in m.T)
+    Hydro_cost = sum(m.HydroGen[n,t]*0.01/scalar*Hours_in_months[t] for n in m.N for t in m.T)
     #Power flow cost on transmission lines
-    Power_flow_cost = sum(m.DummyFlow[l,t]*0.01*Hours_in_months[t] for l in m.L for t in m.T)
+    Power_flow_cost = sum(m.DummyFlow[l,t]*0.01/scalar*Hours_in_months[t] for l in m.L for t in m.T)
     #Investment cost for transmission capacity additions
     Tr_investment_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l]/5 for l in m.L)
 
@@ -217,22 +220,22 @@ def KCL(m,n,t):
     return total_thermal_gen + total_renewable_gen + total_LOL + mustrun_gen - total_power_flow == Demand[t,n]
 m.KCL_Cons = pyo.Constraint(m.N, m.T, rule=KCL)
 
-#Constraint to limit 5-year transmission investment cost in USD
+#Constraint to limit yearly transmission investment cost in USD
 def TransmissionBudget(m):
     Tr_inv_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l] for l in m.L)
-    return Tr_inv_cost <= 20*10**9
+    return Tr_inv_cost <= 4*10**9/scalar
 m.TransmissionBudget_Cons = pyo.Constraint(rule=TransmissionBudget)
 
 #Calling the solver to solve the model
-TEP_results = opt.solve(m)
+TEP_results = opt.solve(m, tee=True)
 
 #Checking the solver status and if solution is feasible or not
 if (TEP_results.solver.status == pyo.SolverStatus.ok) and (TEP_results.solver.termination_condition == pyo.TerminationCondition.optimal):
-    print('Success! Solution is feasible.') 
+    print("\033[92mSuccess! Solution is feasible. \033[00m")
 elif (TEP_results.solver.termination_condition == pyo.TerminationCondition.infeasible):
-    print('Solution is INFEASIBLE!!!') 
+    print("\033[91mSolution is INFEASIBLE!!! \033[00m")
 else:
-    print(f'Something else is not right, solver status is {TEP_results.solver.status}.')
+    print(f"\033[91mSomething else is not right, solver status is {TEP_results.solver.status}. \033[00m")
 
 #Creating a folder to store the results
 os.makedirs('Outputs/TEP', exist_ok=True)
@@ -310,7 +313,7 @@ LineLimit_Results.insert(0, "Name", Line_Names)
 LineLimit_Results.insert(1, "Reactance", Line_Reactances)
 LineLimit_Results.insert(2, "Type", Line_Types)
 LineLimit_Results.insert(3, "Length", Line_Lengths)
-LineLimit_Results.insert(4, "Capital_Cost", Line_Costs)
+LineLimit_Results.insert(4, "Capital_Cost", Line_Costs*scalar)
 LineLimit_Results.insert(5, "Old_Capacity", Line_Initial_Limits)
 LineLimit_Results["Capacity_Addition"] = LineLimit_Results["New_Capacity"] - LineLimit_Results["Old_Capacity"]
 LineLimit_Results["Total_Investment"] = LineLimit_Results["Capital_Cost"]*LineLimit_Results["Capacity_Addition"]*LineLimit_Results["Length"]
