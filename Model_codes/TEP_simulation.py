@@ -99,7 +99,7 @@ HydroGeneration_Results = np.zeros((Num_Periods, Num_Nodes))
 PowerFlow_Results = np.zeros((Num_Periods, Num_Lines))
 UnservedEnergy_Results = np.zeros((Num_Periods, Num_Nodes))
 VoltageAngle_Results = np.zeros((Num_Periods, Num_Nodes))
-LineLimit_Results = np.zeros(Num_Lines)
+LineLimit_Results_np = np.zeros(Num_Lines)
 
 #Initializing the model as concrete model
 m=pyo.ConcreteModel()
@@ -315,9 +315,9 @@ PowerFlow_Results.to_csv("Outputs/TEP/Power_Flow.csv", index=False)
 
 #Saving and writing new transmission line limit results
 for l_n in Lines:
-    LineLimit_Results[l_n] = m.NewLineCap[l_n]()
+    LineLimit_Results_np[l_n] = m.NewLineCap[l_n]()
 
-LineLimit_Results = pd.DataFrame(LineLimit_Results, columns=["New_Capacity"])
+LineLimit_Results = pd.DataFrame(LineLimit_Results_np, columns=["New_Capacity"])
 LineLimit_Results.insert(0, "Name", Line_Names)
 LineLimit_Results.insert(1, "Reactance", Line_Reactances)
 LineLimit_Results.insert(2, "Type", Line_Types)
@@ -326,8 +326,12 @@ LineLimit_Results.insert(4, "Capital_Cost", Line_Costs*Scalar)
 LineLimit_Results.insert(5, "Old_Capacity", Line_Initial_Limits)
 LineLimit_Results["Capacity_Addition"] = LineLimit_Results["New_Capacity"] - LineLimit_Results["Old_Capacity"]
 LineLimit_Results["Total_Investment"] = LineLimit_Results["Capital_Cost"]*LineLimit_Results["Capacity_Addition"]*LineLimit_Results["Length"]
-
 LineLimit_Results.to_csv("Outputs/TEP/New_Transmission_Data.csv", index=False)
+
+GO_Line_File = pd.DataFrame(LineLimit_Results_np, columns=["limit"])
+GO_Line_File.insert(0, "line", Line_Names)
+GO_Line_File.insert(1, "reactance", Line_Reactances)
+GO_Line_File.to_csv("Outputs/TEP/line_params.csv", index=False)
 
 ######################################################################################
 
