@@ -14,13 +14,14 @@ Nodes_no = 125 #Number of nodes in GO model
 Formulation = "simple" #Defining if GO uses LP or MILP
 Transmission_scaling = 500 #Transmission scaling factor of GO
 Hurdle_scaling = -100 #Hurdle rate scaling factor of GO
+Climate_scenario = "rcp45hotter_ssp3" #TGW climate scenario 
+
+###############################################################
 
 #TEP parameters
 TEP_year = 2015 #Year to make transmission plans
-Climate_scenario = "rcp45cooler_ssp3" #TGW climate scenario 
-Interreginonal_TEP_penalty = 50 #Transmission investment cost penalty in % for the lines crossing transmission planning region boundaries
+Interreginonal_TEP_penalty = 0 #Transmission investment cost penalty in % for the lines crossing transmission planning region boundaries
 Line_len_security_scalar = 30 #Line length adder in % for security purposes
-# Demand_security_scalar = 15 #Demand adder in % for security purposes
 
 ###############################################################
 
@@ -75,7 +76,6 @@ for month_day in Days_in_months:
         hydro_max_monthly.loc[idx,:] = hydro_max_filt
 
     else:
-
         fuel_filt = fuel_price.loc[day_counter:day_counter+month_day-1,:].mean().values
         fuel_price_monthly.loc[idx,:] = fuel_filt
 
@@ -107,7 +107,7 @@ for node in hydro_min.columns:
 
 nuclear_monthly.to_csv(f"{path_2}/must_run.csv", index=False)
 
-#Reading and calculating peak demand, average wind and solar for each month and copying to simulation folder
+#Reading and calculating peak net demand, respective total demand, wind and solar for each month and copying to simulation folder
 load = pd.read_csv(f"Datasets/GO_data/Exp{GO_case_name}/Inputs/nodal_load.csv", header=0)
 load_monthly = pd.DataFrame(np.zeros((len(Days_in_months),load.shape[1])), columns=load.columns)
 
@@ -120,54 +120,32 @@ onshore_wind_monthly = pd.DataFrame(np.zeros((len(Days_in_months),onshore_wind.s
 solar = pd.read_csv(f"Datasets/GO_data/Exp{GO_case_name}/Inputs/nodal_solar.csv", header=0)
 solar_monthly = pd.DataFrame(np.zeros((len(Days_in_months),solar.shape[1])), columns=solar.columns)
 
+#Calculating nodal hourly net demand (i.e., demand - solar - wind - offshore wind)
+net_demand = load - solar - onshore_wind - offshore_wind
+net_demand[net_demand < 0] = 0
+net_demand_total = net_demand.sum(axis=1)
+
 hour_counter = 0
 idx = 0
 for month_hour in Hours_in_months:
 
     if idx == 0:
-        load_filt = load.loc[0:month_hour-1,:].max().values
-        load_monthly.loc[idx,:] = load_filt
+        loc_max_net_demand = net_demand_total.loc[0:month_hour-1].argmax()
+        c_idx = net_demand_total.loc[0:month_hour-1].index[loc_max_net_demand]
 
-        offshore_wind_filt = offshore_wind.loc[0:month_hour-1,:].mean().values
-        offshore_wind_monthly.loc[idx,:] = offshore_wind_filt
-
-        onshore_wind_filt = onshore_wind.loc[0:month_hour-1,:].mean().values
-        onshore_wind_monthly.loc[idx,:] = onshore_wind_filt
-
-        solar_filt = solar.loc[0:month_hour-1,:].copy()
-        for node in solar.columns:
-
-            sp_node_sol = solar_filt[node]
-            mean_node_sol = sp_node_sol[sp_node_sol != 0]
-
-            if len(mean_node_sol) == 0:
-                solar_monthly.loc[idx,node] = 0
-
-            else:
-                solar_monthly.loc[idx,node] = mean_node_sol.mean()
+        load_monthly.loc[idx,:] = load.loc[c_idx,:].values
+        offshore_wind_monthly.loc[idx,:] = offshore_wind.loc[c_idx,:].values
+        onshore_wind_monthly.loc[idx,:] = onshore_wind.loc[c_idx,:].values
+        solar_monthly.loc[idx,:] = solar.loc[c_idx,:].values
     
     else:
+        loc_max_net_demand = net_demand_total.loc[hour_counter:hour_counter+month_hour-1].argmax()
+        c_idx = net_demand_total.loc[hour_counter:hour_counter+month_hour-1].index[loc_max_net_demand]  
 
-        load_filt = load.loc[hour_counter:hour_counter+month_hour-1,:].max().values
-        load_monthly.loc[idx,:] = load_filt
-
-        offshore_wind_filt = offshore_wind.loc[hour_counter:hour_counter+month_hour-1,:].mean().values
-        offshore_wind_monthly.loc[idx,:] = offshore_wind_filt
-
-        onshore_wind_filt = onshore_wind.loc[hour_counter:hour_counter+month_hour-1,:].mean().values
-        onshore_wind_monthly.loc[idx,:] = onshore_wind_filt
-
-        solar_filt = solar.loc[hour_counter:hour_counter+month_hour-1,:].copy()
-        for node in solar.columns:
-
-            sp_node_sol = solar_filt[node]
-            mean_node_sol = sp_node_sol[sp_node_sol != 0]
-            
-            if len(mean_node_sol) == 0:
-                solar_monthly.loc[idx,node] = 0
-
-            else:
-                solar_monthly.loc[idx,node] = mean_node_sol.mean()
+        load_monthly.loc[idx,:] = load.loc[c_idx,:].values
+        offshore_wind_monthly.loc[idx,:] = offshore_wind.loc[c_idx,:].values
+        onshore_wind_monthly.loc[idx,:] = onshore_wind.loc[c_idx,:].values
+        solar_monthly.loc[idx,:] = solar.loc[c_idx,:].values
 
     hour_counter += month_hour
     idx += 1

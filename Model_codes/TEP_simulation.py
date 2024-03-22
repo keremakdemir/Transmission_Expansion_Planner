@@ -13,7 +13,7 @@ Scalar = 10**4
 Min_Cost = 0.01/Scalar
 
 #Defining unserved energy penalty
-LOL_Penalty = 2000/Scalar
+LOL_Penalty = 10000/Scalar
 
 #Reading all necessary datasets
 Generators_df = pd.read_csv("Inputs/data_genparams.csv", header=0)
@@ -145,7 +145,7 @@ def TEPCost(m):
     #Power flow cost on transmission lines
     Power_flow_cost = sum(m.DummyFlow[l,t]*Min_Cost*Hours_in_months[t] for l in m.L for t in m.T)
     #Investment cost for transmission capacity additions
-    Tr_investment_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l]/5 for l in m.L)
+    Tr_investment_cost = sum((m.NewLineCap[l]-Line_Initial_Limits[l])*Line_Lengths[l]*Line_Costs[l]/60 for l in m.L)
 
     return Gen_cost + LOL_cost + Solar_cost + Wind_cost + OffWind_cost + Hydro_cost + Power_flow_cost + Tr_investment_cost
     
