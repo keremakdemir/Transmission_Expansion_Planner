@@ -1,2 +1,3 @@
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.11003185.svg)](https://doi.org/10.5281/zenodo.11003185)
 # Transmission_Expansion_Planner
  Transmission expansion planning (TEP) model for the U.S. Western Interconnection. This model utilizes linear programming (LP) to optimize high voltage transmission line investment decisions by considering representative grid conditions in each month of a future year. This tool includes an embedded economic dispatch (ED) model to simulate grid operations. In order to initialize an electricity grid dataset for TEP model, users need to create a future year scenario with [Grid Operations (GO) modeling framework](https://github.com/IMMM-SFA/IM3_WECC/tree/Experiment_Version).
