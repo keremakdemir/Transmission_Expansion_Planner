@@ -125,7 +125,7 @@ m.DummyFlow = pyo.Var(m.L, m.T, within=pyo.Reals, initialize=0) #Absolute value 
 m.NewLineCap = pyo.Var(m.L, within=pyo.PositiveReals) #New capacity of each transmission line in MW
 
 m.LossOfLoad = pyo.Var(m.N, m.T, within=pyo.NonNegativeReals, initialize=0) #Unserved energy in MWh
-m.VoltAngle = pyo.Var(m.N, m.T, within=pyo.Reals, bounds=(-180, 180)) #Voltage angle in degrees
+m.VoltAngle = pyo.Var(m.N, m.T, within=pyo.Reals, bounds=(-3.1415, 3.1415)) #Voltage angle in radians
 
 #Defining objective function
 def TEPCost(m):
