@@ -191,7 +191,7 @@ m.RefVoltAngle_Cons = pyo.Constraint(m.T, rule=ThetaRef)
 #Kirchhoff's Voltage Law constraint
 def KVL_Loop(m,l,t):
     theta_diff = sum(m.VoltAngle[n,t]*Line_Node_Matrix[l,n] for n in m.N)
-    return  100*theta_diff == m.ActualFlow[l,t]*(100/Line_Initial_Limits[l])
+    return  100*theta_diff == m.ActualFlow[l,t]*((0.524/Line_Initial_Limits[l])*100)
 m.KVLAroundLoopConstraint = pyo.Constraint(m.L, m.T, rule=KVL_Loop)
 
 #Maximum transmission line flow constraint (positive side)
@@ -319,7 +319,7 @@ for l_n in Lines:
 
 LineLimit_Results = pd.DataFrame(LineLimit_Results_np, columns=["New_Capacity"])
 LineLimit_Results.insert(0, "Name", Line_Names)
-LineLimit_Results.insert(1, "Reactance", 100/LineLimit_Results_np)
+LineLimit_Results.insert(1, "Reactance", (0.524/LineLimit_Results_np)*100) #Recalculating reactance based on new thermal capacity of the transmission lines by the formula (pi/6)/thermal limit*100
 LineLimit_Results.insert(2, "Type", Line_Types)
 LineLimit_Results.insert(3, "Length", Line_Lengths)
 LineLimit_Results.insert(4, "Capital_Cost", Line_Costs*Scalar)
@@ -330,7 +330,7 @@ LineLimit_Results.to_csv("Outputs/TEP/New_Transmission_Data.csv", index=False)
 
 GO_Line_File = pd.DataFrame(LineLimit_Results_np, columns=["limit"])
 GO_Line_File.insert(0, "line", Line_Names)
-GO_Line_File.insert(1, "reactance", 100/LineLimit_Results_np)
+GO_Line_File.insert(1, "reactance", (0.524/LineLimit_Results_np)*100) #Recalculating reactance based on new thermal capacity of the transmission lines by the formula (pi/6)/thermal limit*100
 GO_Line_File.to_csv("Outputs/TEP/line_params.csv", index=False)
 
 ######################################################################################
